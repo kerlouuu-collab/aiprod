@@ -1,0 +1,555 @@
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lumirama AI Virtual Try-On</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&family=Marhey:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+      /* Fix for aspect ratio in Tailwind CDN */
+      @tailwind base;
+      @tailwind components;
+      @tailwind utilities;
+
+      .aspect-w-1 {
+        aspect-ratio: 1 / 1;
+      }
+      .aspect-h-1 {
+        /* Not needed with aspect-ratio */
+      }
+    </style>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              gold: {
+                DEFAULT: '#c5a572',
+                '50': '#f7f3eb',
+                '100': '#ede5d4',
+                '200': '#e0d1b3',
+                '300': '#d3bd92',
+                '400': '#c5a572',
+                '500': '#b48e55',
+                '600': '#997344',
+                '700': '#7d5b38',
+                '800': '#664a31',
+                '900': '#553e2c',
+                '950': '#302118',
+              },
+            },
+            fontFamily: {
+              sans: ['Cairo', 'sans-serif'],
+              heading: ['Marhey', 'serif'],
+            },
+          },
+        },
+      }
+    </script>
+  <script type="importmap">
+{
+  "imports": {
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.28.0",
+    "react-dom/client": "https://aistudiocdn.com/react-dom@^19.2.0/client",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module">
+import React, { useState, useMemo, useCallback } from 'react';
+import ReactDOM from 'react-dom/client';
+import { GoogleGenAI, Modality } from '@google/genai';
+
+
+// --- START OF TYPES ---
+// From types.ts
+// --- END OF TYPES ---
+
+// --- START OF CONSTANTS ---
+// From constants.ts
+const CATEGORIES = [
+  { id: 1, name: 'مصابيح سقف' },
+  { id: 2, name: 'سبوتات' },
+  { id: 3, name: 'إضاءة ليد' },
+  { id: 4, name: 'أباجورات' },
+  { id: 5, name: 'إضاءة خارجية' },
+];
+
+const PRODUCTS = [
+  // مصابيح سقف
+  {
+    id: 1,
+    name: 'ثريا كريستال ذهبية',
+    price: '35,000 دج',
+    category: 'مصابيح سقف',
+    imageUrl: 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEi8mCfEGyql6qCdeSyn1GV8uCrtHRuk665S1ayXDaOhSKEXHCsvL4JHQSOuNgkZuf8EpE8wUvo6Cxv7F1UUVhkpNsYj4T7fiFMNiQDbfu91UfKQsX-pzPtdfxLrEgaYG1XuZcS4uOmSAkrwv0VaQn7vZq31EgKZcK7E9zRr6m9yS4kTngbvUYzT0JS0huc/s800/SP-0011-1.jpg',
+    purchaseUrl: 'https://www.lumirama.dz',
+  },
+  {
+    id: 2,
+    name: 'مصباح سقف مودرن',
+    price: '18,500 دج',
+    category: 'مصابيح سقف',
+    imageUrl: 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEi7HnwpzpRuBa1_G_hYfUWeP8G9OLTbDrZy5F-fV7hT3I_5P61bb8jkt5aEBzqIoSl9BzdXZNdLlBWRLuPJSdcZWrgS2oP62WBCD01u1CHWxut0J3jqh7CowRi_nR4QApT-eFCHiS7MxIt6miqwXBzyHqkEMrSQ5zzYSGNw4eimsMhpWGPShNkhoIO2YdU/s800/R-H372-5070.jpg',
+    purchaseUrl: 'https://www.lumirama.dz',
+  },
+  {
+    id: 3,
+    name: 'ثريا كلاسيكية برونزية',
+    price: '42,000 دج',
+    category: 'مصابيح سقف',
+    imageUrl: 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEi4vu-mQcKN4g2volaQ6y_j4_NbKVjX02tXOZs3Ye87Q6VeocUNpY97nK85VRqyX1o7v9zGlyL5usZRMuwmMg3myun8WRfb4PBE6q6JjRA6m9Pc-BLC56RQFOZiAWAXgt37AiI4NKyCBUGcES1NHTYf5TZKARYr6UqCMJxnKd1ObY9MHmkSh7AKEznKOIM/s800/M-09048CL-3.jpg',
+    purchaseUrl: 'https://www.lumirama.dz',
+  },
+  // سبوتات
+  {
+    id: 4,
+    name: 'سبوت LED غاطس',
+    price: '1,200 دج',
+    category: 'سبوتات',
+    imageUrl: 'https://picsum.photos/seed/spot1/400/400',
+    purchaseUrl: 'https://www.lumirama.dz',
+  },
+  {
+    id: 5,
+    name: 'سبوت موجه أبيض',
+    price: '2,500 دج',
+    category: 'سبوتات',
+    imageUrl: 'https://picsum.photos/seed/spot2/400/400',
+    purchaseUrl: 'https://www.lumirama.dz',
+  },
+  // إضاءة ليد
+  {
+    id: 6,
+    name: 'شريط ليد متعدد الألوان',
+    price: '4,500 دج',
+    category: 'إضاءة ليد',
+    imageUrl: 'https://picsum.photos/seed/led1/400/400',
+    purchaseUrl: 'https://www.lumirama.dz',
+  },
+  {
+    id: 7,
+    name: 'لوحة ليد مربعة',
+    price: '6,000 دج',
+    category: 'إضاءة ليد',
+    imageUrl: 'https://picsum.photos/seed/led2/400/400',
+    purchaseUrl: 'https://www.lumirama.dz',
+  },
+  // أباجورات
+  {
+    id: 8,
+    name: 'أباجورة طاولة سيراميك',
+    price: '7,800 دج',
+    category: 'أباجورات',
+    imageUrl: 'https://picsum.photos/seed/lamp1/400/400',
+    purchaseUrl: 'https://www.lumirama.dz',
+  },
+  {
+    id: 9,
+    name: 'أباجورة أرضية معدنية',
+    price: '12,000 دج',
+    category: 'أباجورات',
+    imageUrl: 'https://picsum.photos/seed/lamp2/400/400',
+    purchaseUrl: 'https://www.lumirama.dz',
+  },
+   // إضاءة خارجية
+  {
+    id: 10,
+    name: 'مصباح حائط خارجي',
+    price: '9,500 دج',
+    category: 'إضاءة خارجية',
+    imageUrl: 'https://picsum.photos/seed/outdoor1/400/400',
+    purchaseUrl: 'https://www.lumirama.dz',
+  },
+  {
+    id: 11,
+    name: 'كشاف حديقة بالطاقة الشمسية',
+    price: '6,200 دج',
+    category: 'إضاءة خارجية',
+    imageUrl: 'https://picsum.photos/seed/outdoor2/400/400',
+    purchaseUrl: 'https://www.lumirama.dz',
+  },
+];
+// --- END OF CONSTANTS ---
+
+// --- START OF SERVICES ---
+// From services/geminiService.ts
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+function getPlacementInstruction(category) {
+    switch(category) {
+        case 'مصابيح سقف':
+        case 'سبوتات':
+            return 'The fixture should be installed on the ceiling.';
+        case 'أباجورات':
+            return 'The lamp should be placed on a suitable surface like a table or the floor.';
+        case 'إضاءة خارجية':
+            return 'The light should be placed on an exterior wall or in a garden setting.';
+        default:
+            return 'Place the fixture appropriately in the room.';
+    }
+}
+
+const placeProductInImage = async (
+  roomImageBase64,
+  roomImageMimeType,
+  productImageBase64,
+  productImageMimeType,
+  prompt,
+  category
+) => {
+    try {
+        const placement = getPlacementInstruction(category);
+        const fullPrompt = `
+            You are an expert interior design visualizer. Your task is to realistically integrate a lighting product into a room photo.
+            - Room photo is provided.
+            - Lighting product photo is provided.
+            - User instruction: "${prompt}"
+            - Placement guideline based on category: "${placement}"
+            Combine these elements to create a photorealistic image. Pay close attention to scale, perspective, lighting, and shadows to make the integration seamless.
+        `;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash-image',
+            contents: {
+                parts: [
+                    {
+                        inlineData: {
+                            data: roomImageBase64,
+                            mimeType: roomImageMimeType,
+                        },
+                    },
+                    {
+                        inlineData: {
+                            data: productImageBase64,
+                            mimeType: productImageMimeType,
+                        },
+                    },
+                    {
+                        text: fullPrompt,
+                    },
+                ],
+            },
+            config: {
+                responseModalities: [Modality.IMAGE],
+            },
+        });
+        
+        for (const part of response.candidates[0].content.parts) {
+            if (part.inlineData) {
+                const base64ImageBytes = part.inlineData.data;
+                const mimeType = part.inlineData.mimeType;
+                return `data:${mimeType};base64,${base64ImageBytes}`;
+            }
+        }
+
+        throw new Error('No image was generated by the API.');
+
+    } catch (error) {
+        console.error("Error calling Gemini API:", error);
+        throw new Error("Failed to generate image with Gemini API.");
+    }
+};
+// --- END OF SERVICES ---
+
+
+// --- START OF COMPONENTS ---
+
+// From components/Spinner.tsx
+const Spinner = () => {
+  return (
+    React.createElement("div", { className: "flex justify-center items-center" },
+      React.createElement("div", { className: "w-16 h-16 border-4 border-dashed rounded-full animate-spin border-gold" })
+    )
+  );
+};
+
+// From components/ProductCard.tsx
+const ProductCard = ({ product, onSelectProduct }) => {
+  return (
+    React.createElement("div", { 
+      className: "bg-white rounded-lg shadow-md overflow-hidden cursor-pointer transform hover:scale-105 transition-transform duration-300 group relative",
+      onClick: () => onSelectProduct(product)
+    },
+      React.createElement("div", { className: "aspect-w-1 w-full overflow-hidden" },
+        React.createElement("img", { src: product.imageUrl, alt: product.name, className: "w-full h-full object-cover" })
+      ),
+      React.createElement("div", { className: "p-4" },
+        React.createElement("h3", { className: "text-lg font-bold text-gray-800 truncate" }, product.name),
+        React.createElement("p", { className: "text-gold font-semibold mt-2" }, product.price)
+      ),
+      React.createElement("div", { className: "absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300" },
+          React.createElement("span", { className: "text-white text-lg font-bold" }, "جرب الآن")
+      )
+    )
+  );
+};
+
+// From components/ProductGrid.tsx
+const ProductGrid = ({ products, onSelectProduct }) => {
+  return (
+    React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" },
+      products.map(product => (
+        React.createElement(ProductCard, { key: product.id, product: product, onSelectProduct: onSelectProduct })
+      ))
+    )
+  );
+};
+
+
+// From components/Header.tsx
+const Header = () => {
+  return (
+    React.createElement("header", { className: "bg-white shadow-md sticky top-0 z-10" },
+      React.createElement("div", { className: "container mx-auto px-4 py-4 flex justify-between items-center" },
+        React.createElement("div", { className: "flex items-center space-x-4" },
+          React.createElement("svg", { className: "w-10 h-10 text-gold", fill: "none", stroke: "currentColor", viewBox: "0 0 24 24", xmlns: "http://www.w3.org/2000/svg" }, React.createElement("path", { strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: "2", d: "M12 6.253v11.494m-9-5.747h18M5.47 7.72l13.06 8.56M5.47 16.28L18.53 7.72" })),
+          React.createElement("h1", { className: "text-2xl font-heading font-bold text-gray-800" }, "Lumirama")
+        ),
+        React.createElement("nav", { className: "hidden md:flex space-x-8 space-x-reverse" },
+          React.createElement("a", { href: "#", className: "text-gray-600 hover:text-gold transition duration-300" }, "الرئيسية"),
+          React.createElement("a", { href: "#", className: "text-gray-600 hover:text-gold transition duration-300" }, "المنتجات"),
+          React.createElement("a", { href: "#", className: "text-gray-600 hover:text-gold transition duration-300" }, "تواصل معنا")
+        ),
+        React.createElement("button", { className: "md:hidden text-gray-600" },
+          React.createElement("svg", { className: "w-6 h-6", fill: "none", stroke: "currentColor", viewBox: "0 0 24 24", xmlns: "http://www.w3.org/2000/svg" }, React.createElement("path", { strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: "2", d: "M4 6h16M4 12h16M4 18h16" }))
+        )
+      )
+    )
+  );
+};
+
+// From components/Sidebar.tsx
+const Sidebar = ({ categories, selectedCategory, onSelectCategory }) => {
+  return (
+    React.createElement("aside", { className: "w-full md:w-64 bg-white p-6 rounded-lg shadow-lg self-start" },
+      React.createElement("h2", { className: "text-xl font-bold font-heading mb-4 text-gray-800" }, "الفئات"),
+      React.createElement("ul", null,
+        categories.map(category => (
+          React.createElement("li", { key: category.id, className: "mb-2" },
+            React.createElement("button", {
+              onClick: () => onSelectCategory(category),
+              className: `w-full text-right px-4 py-2 rounded-md transition duration-300 text-base ${
+                selectedCategory?.id === category.id
+                  ? 'bg-gold text-white shadow'
+                  : 'text-gray-600 hover:bg-gold-50 hover:text-gold'
+              }`
+            },
+              category.name
+            )
+          )
+        ))
+      )
+    )
+  );
+};
+
+// From components/VirtualTryOn.tsx
+const VirtualTryOn = ({ product, onBack }) => {
+  const [roomImage, setRoomImage] = useState(null);
+  const [generatedImages, setGeneratedImages] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const fileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result.split(',')[1]);
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
+  const urlToBase64 = async (url) => {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result.split(',')[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+      });
+  };
+
+  const handleFileChange = async (event) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setGeneratedImages([]);
+      const base64Image = await fileToBase64(file);
+      const imageUrl = `data:${file.type};base64,${base64Image}`;
+      setRoomImage(imageUrl);
+      handleImageGeneration(base64Image, file.type);
+    }
+  };
+
+  const handleImageGeneration = useCallback(async (roomImageBase64, roomImageMimeType) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+        const productImageUrl = product.imageUrl;
+        const productImageBase64 = await urlToBase64(productImageUrl);
+        const productImageMimeType = "image/jpeg";
+
+        const prompts = [
+            `ضع وحدة الإضاءة هذه بشكل واقعي في الغرفة. يجب أن تكون مثبتة في السقف. ركز على الظلال والإضاءة والحجم لجعلها تبدو طبيعية.`,
+            `اعرض وحدة الإضاءة هذه في الغرفة من زاوية مختلفة قليلاً، مع إضاءة أكثر نعومة.`,
+            `قم بدمج وحدة الإضاءة هذه في الغرفة، واعرضها كما لو أن الأضواء مضاءة في المساء.`
+        ];
+        
+        const promises = prompts.map(prompt => 
+            placeProductInImage(roomImageBase64, roomImageMimeType, productImageBase64, productImageMimeType, prompt, product.category)
+        );
+
+        const results = await Promise.all(promises);
+        setGeneratedImages(results);
+    } catch (err) {
+      setError('فشل في توليد الصورة. الرجاء المحاولة مرة أخرى.');
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [product]);
+
+  return (
+    React.createElement("div", { className: "bg-white p-6 sm:p-8 rounded-lg shadow-lg" },
+      React.createElement("button", { onClick: onBack, className: "mb-6 text-gold hover:underline flex items-center gap-2" },
+        React.createElement("svg", { xmlns: "http://www.w3.org/2000/svg", className: "h-5 w-5", viewBox: "0 0 20 20", fill: "currentColor" },
+          React.createElement("path", { fillRule: "evenodd", d: "M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z", clipRule: "evenodd" })
+        ),
+        "العودة إلى المنتجات"
+      ),
+      React.createElement("div", { className: "flex flex-col md:flex-row gap-8" },
+        React.createElement("div", { className: "md:w-1/3" },
+          React.createElement("img", { src: product.imageUrl, alt: product.name, className: "w-full rounded-lg shadow-md" }),
+          React.createElement("h2", { className: "text-2xl font-bold font-heading mt-4" }, product.name),
+          React.createElement("p", { className: "text-xl text-gold mt-2" }, product.price),
+          React.createElement("p", { className: "text-gray-600 mt-1" }, product.category)
+        ),
+        React.createElement("div", { className: "md:w-2/3" },
+          React.createElement("div", { className: "border-2 border-dashed border-gray-300 rounded-lg p-8 text-center bg-gold-50" },
+            React.createElement("h3", { className: "text-xl font-bold mb-2" }, "جرب المنتج في مساحتك الخاصة"),
+            React.createElement("p", { className: "text-gray-600 mb-4" }, "ارفع صورة لغرفتك لترى كيف سيبدو المنتج فيها."),
+            React.createElement("input", {
+              type: "file",
+              id: "room-image-upload",
+              className: "hidden",
+              accept: "image/*",
+              capture: "environment",
+              onChange: handleFileChange
+            }),
+            React.createElement("label", { htmlFor: "room-image-upload", className: "inline-block bg-gold text-white font-bold py-2 px-6 rounded-lg cursor-pointer hover:bg-gold-600 transition duration-300" },
+              "ارفع صورة"
+            )
+          ),
+          error && React.createElement("p", { className: "text-red-500 mt-4 text-center" }, error)
+        )
+      ),
+      isLoading && (
+        React.createElement("div", { className: "mt-8 text-center" },
+            React.createElement(Spinner, null),
+            React.createElement("p", { className: "mt-4 text-gray-600" }, "يقوم الذكاء الاصطناعي بدمج المنتج في صورتك... قد يستغرق هذا بضع لحظات.")
+        )
+      ),
+      generatedImages.length > 0 && (
+        React.createElement("div", { className: "mt-12" },
+            React.createElement("h3", { className: "text-2xl font-bold font-heading text-center mb-6" }, "النتائج التي تم إنشاؤها بواسطة الذكاء الاصطناعي"),
+            React.createElement("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-6" },
+                generatedImages.map((imgSrc, index) => (
+                    React.createElement("div", { key: index, className: "rounded-lg overflow-hidden shadow-lg border-2 border-gold" },
+                        React.createElement("img", { src: imgSrc, alt: `Generated view ${index + 1}`, className: "w-full h-auto object-contain" })
+                    )
+                ))
+            ),
+             React.createElement("div", { className: "text-center mt-8" },
+                React.createElement("a", { 
+                    href: product.purchaseUrl, 
+                    target: "_blank", 
+                    rel: "noopener noreferrer",
+                    className: "inline-block bg-green-600 text-white font-bold py-3 px-10 rounded-lg cursor-pointer hover:bg-green-700 transition duration-300 text-lg shadow-md"
+                },
+                    "إكمال الشراء على موقع Lumirama"
+                )
+            )
+        )
+      ),
+      roomImage && generatedImages.length === 0 && !isLoading && (
+         React.createElement("div", { className: "mt-12" },
+             React.createElement("h3", { className: "text-2xl font-bold font-heading text-center mb-6" }, "صورتك الأصلية"),
+             React.createElement("div", { className: "flex justify-center" },
+                React.createElement("img", { src: roomImage, alt: "Your room", className: "max-w-full md:max-w-lg rounded-lg shadow-lg" })
+             )
+        )
+      )
+    )
+  );
+};
+
+
+// From App.tsx
+function App() {
+  const [selectedCategory, setSelectedCategory] = useState(CATEGORIES[0]);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+
+  const filteredProducts = useMemo(() => {
+    if (!selectedCategory) {
+      return PRODUCTS;
+    }
+    return PRODUCTS.filter(p => p.category === selectedCategory.name);
+  }, [selectedCategory]);
+
+  const handleSelectProduct = (product) => {
+    setSelectedProduct(product);
+  };
+
+  const handleBackToProducts = () => {
+    setSelectedProduct(null);
+  };
+
+  return (
+    React.createElement("div", { className: "min-h-screen bg-gray-50 text-gray-800 font-sans" },
+      React.createElement(Header, null),
+      React.createElement("main", { className: "flex flex-col md:flex-row container mx-auto px-4 py-8 gap-8" },
+        React.createElement(Sidebar, {
+          categories: CATEGORIES,
+          selectedCategory: selectedCategory,
+          onSelectCategory: setSelectedCategory
+        }),
+        React.createElement("div", { className: "flex-1" },
+          selectedProduct ? (
+            React.createElement(VirtualTryOn, { product: selectedProduct, onBack: handleBackToProducts })
+          ) : (
+            React.createElement(ProductGrid, { products: filteredProducts, onSelectProduct: handleSelectProduct })
+          )
+        )
+      )
+    )
+  );
+}
+
+// --- END OF COMPONENTS ---
+
+// --- Main render logic from index.tsx ---
+const rootElement = document.getElementById('root');
+if (!rootElement) {
+  throw new Error("Could not find root element to mount to");
+}
+
+const root = ReactDOM.createRoot(rootElement);
+root.render(
+  React.createElement(React.StrictMode, null,
+    React.createElement(App, null)
+  )
+);
+    </script>
+  </body>
+</html>
