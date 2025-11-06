@@ -1,0 +1,7 @@
+{
+  "name": "Lumirama AI Virtual Try-On",
+  "description": "An interactive web application that allows users to virtually try on lighting products from Lumirama.dz in their own rooms using AI.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

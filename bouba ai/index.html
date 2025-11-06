@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lumirama AI Virtual Try-On</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&family=Marhey:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+      @tailwind base;
+      @tailwind components;
+      @tailwind utilities;
+      /* Custom aspect ratio for Tailwind CDN compatibility */
+      .aspect-w-1 { aspect-ratio: 1 / 1; }
+    </style>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              gold: { DEFAULT: '#c5a572', '50': '#f7f3eb', '100': '#ede5d4', '200': '#e0d1b3', '300': '#d3bd92', '400': '#c5a572', '500': '#b48e55', '600': '#997344', '700': '#7d5b38', '800': '#664a31', '900': '#553e2c', '950': '#302118', },
+            },
+            fontFamily: {
+              sans: ['Cairo', 'sans-serif'],
+              heading: ['Marhey', 'serif'],
+            },
+          },
+        },
+      }
+    </script>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.29.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
